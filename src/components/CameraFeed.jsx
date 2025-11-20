@@ -51,7 +51,11 @@ const CameraFeed = ({ onLandmarksDetected }) => {
             if (results && results.landmarks) {
                 draw(results.landmarks);
                 if (onLandmarksDetected) {
-                    onLandmarksDetected(results.landmarks);
+                    try {
+                        onLandmarksDetected(results.landmarks);
+                    } catch (err) {
+                        console.error("Error in onLandmarksDetected:", err);
+                    }
                 }
             }
         }
