@@ -1,35 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useCallback } from 'react';
+import CameraFeed from './components/CameraFeed';
+import UIOverlay from './components/UIOverlay';
+import { useLearningStore } from './store/LearningStore';
+import { gestureAnalyzer } from './services/GestureAnalyzer';
+import { ASL_LETTERS } from './data/aslData';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { currentLevelIndex, setFeedback } = useLearningStore();
+
+  const handleLandmarks = useCallback((landmarks) => {
+    const targetLetter = ASL_LETTERS[currentLevelIndex];
+    if (!targetLetter) return;
+
+    const result = gestureAnalyzer.analyze(landmarks, targetLetter.id);
+
+    setFeedback(result.feedback, result.confidence, result.isCorrect);
+  }, [currentLevelIndex, setFeedback]);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950">
+      <header className="mb-6 text-center animate-fade-in">
+        <h1 className="text-4xl font-bold mb-2 text-gradient tracking-tight">SignTutor AI</h1>
+        <p className="text-slate-400">Interactive ASL Learning Assistant</p>
+      </header>
+
+      <div className="relative w-full max-w-4xl aspect-video rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-900">
+        <CameraFeed onLandmarksDetected={handleLandmarks} />
+        <UIOverlay />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;
