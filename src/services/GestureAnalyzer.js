@@ -1,4 +1,5 @@
 import { HandLandmarker } from '@mediapipe/tasks-vision';
+import { motionDetector } from './MotionDetector';
 
 class GestureAnalyzer {
     constructor() {
@@ -28,6 +29,11 @@ class GestureAnalyzer {
         }
 
         const hand = landmarks[0]; // Array of 21 landmarks (x, y, z)
+        
+        // Add landmarks to motion detector for J and Z
+        if (targetLetter === 'J' || targetLetter === 'Z') {
+            motionDetector.addFrame(landmarks);
+        }
 
         // Calculate state for each finger
         const fingerStates = this.getFingerStates(hand);
@@ -566,28 +572,49 @@ class GestureAnalyzer {
     // --- Letter J Analysis (motion required) ---
     analyzeLetterJ(hand, fingerStates) {
         // J starts with I shape then draws a hook
-        // For now, just check for I shape (motion detection would be added with MotionDetector)
         const corrections = [];
         let totalScore = 0;
         
+        // Check for I shape (pinky up, others closed)
         const pinkyScore = this.getAngleScore(fingerStates['Pinky'].angle, 'OPEN');
-        totalScore += pinkyScore * 0.6;
-        
         const otherScore = (
             this.getAngleScore(fingerStates['Index'].angle, 'CLOSED') +
             this.getAngleScore(fingerStates['Middle'].angle, 'CLOSED') +
             this.getAngleScore(fingerStates['Ring'].angle, 'CLOSED')
         ) / 3;
-        totalScore += otherScore * 0.4;
+        const shapeScore = (pinkyScore * 0.6 + otherScore * 0.4);
         
-        corrections.push('Draw a J motion with your pinky');
+        if (shapeScore < 0.7) {
+            corrections.push('Start with I shape (pinky up)');
+        }
         
-        return {
-            isCorrect: false, // Motion required
-            confidence: totalScore * 0.7, // Reduced since motion not detected
-            feedback: 'Make I shape, then hook down',
-            corrections
-        };
+        // Detect J motion pattern
+        const motionResult = motionDetector.detectJPattern();
+        
+        if (motionResult.detected) {
+            totalScore = Math.min(shapeScore, 0.4) + motionResult.confidence * 0.6;
+            return {
+                isCorrect: totalScore > 0.85,
+                confidence: totalScore,
+                feedback: totalScore > 0.85 ? 'Perfect J motion!' : 'Good, keep practicing',
+                corrections
+            };
+        } else {
+            // Motion not detected yet
+            totalScore = shapeScore * 0.5; // Partial credit for shape
+            if (motionResult.confidence > 0.3) {
+                corrections.push('Continue the hook motion down');
+            } else {
+                corrections.push('Draw a J hook motion with your pinky');
+            }
+            
+            return {
+                isCorrect: false,
+                confidence: totalScore,
+                feedback: 'Make I shape, then hook down',
+                corrections
+            };
+        }
     }
 
     // --- Letter K Analysis ---
@@ -973,24 +1000,46 @@ class GestureAnalyzer {
         const corrections = [];
         let totalScore = 0;
         
+        // Check for I shape (pinky up, others closed)
         const pinkyScore = this.getAngleScore(fingerStates['Pinky'].angle, 'OPEN');
-        totalScore += pinkyScore * 0.6;
-        
         const otherScore = (
             this.getAngleScore(fingerStates['Index'].angle, 'CLOSED') +
             this.getAngleScore(fingerStates['Middle'].angle, 'CLOSED') +
             this.getAngleScore(fingerStates['Ring'].angle, 'CLOSED')
         ) / 3;
-        totalScore += otherScore * 0.4;
+        const shapeScore = (pinkyScore * 0.6 + otherScore * 0.4);
         
-        corrections.push('Draw a Z motion with your pinky');
+        if (shapeScore < 0.7) {
+            corrections.push('Start with I shape (pinky up)');
+        }
         
-        return {
-            isCorrect: false, // Motion required
-            confidence: totalScore * 0.7,
-            feedback: 'Make I shape, then zigzag',
-            corrections
-        };
+        // Detect Z motion pattern
+        const motionResult = motionDetector.detectZPattern();
+        
+        if (motionResult.detected) {
+            totalScore = Math.min(shapeScore, 0.4) + motionResult.confidence * 0.6;
+            return {
+                isCorrect: totalScore > 0.85,
+                confidence: totalScore,
+                feedback: totalScore > 0.85 ? 'Perfect Z motion!' : 'Good zigzag!',
+                corrections
+            };
+        } else {
+            // Motion not detected yet
+            totalScore = shapeScore * 0.5; // Partial credit for shape
+            if (motionResult.confidence > 0.3) {
+                corrections.push('Continue the zigzag pattern');
+            } else {
+                corrections.push('Draw a Z zigzag motion with your pinky');
+            }
+            
+            return {
+                isCorrect: false,
+                confidence: totalScore,
+                feedback: 'Make I shape, then zigzag',
+                corrections
+            };
+        }
     }
 }
 
