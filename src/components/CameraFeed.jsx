@@ -30,39 +30,40 @@ const CameraFeed = ({ onLandmarksDetected }) => {
         }
     }, []);
 
-    const loop = useCallback(() => {
-        if (
-            typeof webcamRef.current !== 'undefined' &&
-            webcamRef.current !== null &&
-            webcamRef.current.video.readyState === 4
-        ) {
-            const video = webcamRef.current.video;
-            const videoWidth = video.videoWidth;
-            const videoHeight = video.videoHeight;
+    useEffect(() => {
+        const loop = () => {
+            if (
+                typeof webcamRef.current !== 'undefined' &&
+                webcamRef.current !== null &&
+                webcamRef.current.video.readyState === 4
+            ) {
+                const video = webcamRef.current.video;
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
 
-            // Set canvas dimensions to match video
-            if (canvasRef.current) {
-                canvasRef.current.width = videoWidth;
-                canvasRef.current.height = videoHeight;
-            }
+                // Set canvas dimensions to match video
+                if (canvasRef.current) {
+                    canvasRef.current.width = videoWidth;
+                    canvasRef.current.height = videoHeight;
+                }
 
-            const results = handTrackingService.detect(video);
+                const results = handTrackingService.detect(video);
 
-            if (results && results.landmarks) {
-                draw(results.landmarks);
-                if (onLandmarksDetected) {
-                    try {
-                        onLandmarksDetected(results.landmarks);
-                    } catch (err) {
-                        console.error("Error in onLandmarksDetected:", err);
+                if (results && results.landmarks) {
+                    draw(results.landmarks);
+                    if (onLandmarksDetected) {
+                        try {
+                            onLandmarksDetected(results.landmarks);
+                        } catch (err) {
+                            console.error("Error in onLandmarksDetected:", err);
+                        }
                     }
                 }
             }
-        }
-        requestRef.current = requestAnimationFrame(loop);
-    }, [draw, onLandmarksDetected]);
+            requestRef.current = requestAnimationFrame(loop);
+        };
 
-    useEffect(() => {
+
         const init = async () => {
             await handTrackingService.initialize();
             requestRef.current = requestAnimationFrame(loop);
@@ -74,7 +75,7 @@ const CameraFeed = ({ onLandmarksDetected }) => {
                 cancelAnimationFrame(requestRef.current);
             }
         };
-    }, [loop]);
+    }, [draw, onLandmarksDetected]);
 
     return (
         <div className="relative w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-700 bg-slate-900">
